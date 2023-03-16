@@ -335,8 +335,7 @@ if __name__ == "__main__":
         m.enable_channels_last()
 
     test = m.invoke
-    if args.amp:
-        test = torch.autocast("cuda")(test)
+    
     metrics_needed = [_ for _ in args.metrics.split(',') if _.strip()] if args.metrics else []
     metrics_gpu_backend = args.metrics_gpu_backend
     if metrics_needed:

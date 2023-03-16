@@ -101,8 +101,4 @@ class TorchVisionModel(BenchmarkModel):
             self.g.replay()
             break
         return (self.example_outputs, )
-
-    def enable_amp(self):
-        if not self.dynamo and self.opt_args.cudagraph:
-            return NotImplementedError("AMP not implemented for cudagraphs")
-        self.amp_context = lambda: torch.cuda.amp.autocast(dtype=torch.float16)
+    

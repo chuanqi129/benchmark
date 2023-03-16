@@ -122,6 +122,7 @@ class BenchmarkModel(metaclass=PostInitProcessor):
         assert self.test == "train" or self.test == "eval", f"Test must be 'train' or 'eval', but provided {self.test}."
         # parse the args
         self.dargs, opt_args = parse_decoration_args(self, self.extra_args)
+
         # if the args contain "--torchdynamo", parse torchdynamo args
         if "--torchdynamo" in opt_args:
             self.dynamo = True
@@ -377,3 +378,13 @@ class BenchmarkModel(metaclass=PostInitProcessor):
             self.example_inputs = inputs_convert(self.example_inputs)
         else:
             warnings.warn(UserWarning(f"{model_name} example inputs doesn't convert to `channels_last`!"))       
+
+    def enable_amp(self):
+        if (not self.dynamo) and hasattr(self.opt_args, 'cudagraph'):
+            return NotImplementedError("AMP not implemented for cudagraphs")
+        
+        dtype = torch.float16
+        if self.test == "train" and self.device == "xpu":
+            dtype = torch.bfloat16
+        print("amp train precision for %s is %s" % (self.device, dtype))
+        self.amp_context = lambda: torch.autocast(device_type=self.device, dtype=dtype, enabled=True)

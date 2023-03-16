@@ -38,11 +38,11 @@ def check_precision(model: 'torchbenchmark.util.model.BenchmarkModel', precision
     if precision == "fp16":
         return model.device == 'cuda' and hasattr(model, "enable_fp16_half")
     if precision == "tf32":
-        return model.device == "cuda"
+        return model.device == 'cuda'
     if precision == "amp":
-        if model.test == 'eval' and model.device == 'cuda':
+        if model.test == 'eval' and (model.device == 'cuda' or model.device == 'xpu'):
             return True
-        if model.test == 'train' and model.device == 'cuda':
+        if model.test == 'train'and (model.device == 'cuda' or model.device == 'xpu'):
             return hasattr(model, 'enable_amp') or is_staged_train_test(model)
     assert precision == "fp32", f"Expected precision to be one of fp32, tf32, fp16, or amp, but get {precision}"
     return True
@@ -85,7 +85,7 @@ def parse_decoration_args(model: 'torchbenchmark.util.model.BenchmarkModel', ext
     if not check_precision(model, dargs.precision):
         raise NotImplementedError(f"precision value: {dargs.precision}, "
                                   "fp16 is only supported if the model implements the `enable_fp16_half()` callback function."
-                                  "amp is only supported if cuda+eval, or if `enable_amp` implemented,"
+                                  "amp is only supported if the model implements the `enable_amp()` callback function,"
                                   "or if model uses staged train interfaces (forward, backward, optimizer).")
     if not check_memory_layout(model, dargs.channels_last):
         raise NotImplementedError(f"Specified channels_last: {dargs.channels_last} ,"
@@ -98,6 +98,8 @@ def parse_decoration_args(model: 'torchbenchmark.util.model.BenchmarkModel', ext
 def apply_decoration_args(model: 'torchbenchmark.util.model.BenchmarkModel', dargs: argparse.Namespace):
     if dargs.channels_last:
         model.enable_channels_last()
+    #if --optimize:
+
     if dargs.precision == "fp16":
         model.enable_fp16_half()
     elif dargs.precision == "tf32":
