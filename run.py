@@ -58,7 +58,7 @@ def run_one_step_with_cudastreams(func, streamcount):
 
 
 def printResultSummaryTime(result_summary, metrics_needed=[], metrics_backend_mapping={}, model=None, model_analyzer=None):
-    if args.device in ["cuda", "xpu", "ipex_cpu"]:
+    if args.device in ["cuda", "xpu"]:
         gpu_time = np.median(list(map(lambda x: x[0], result_summary)))
         cpu_walltime = np.median(list(map(lambda x: x[1], result_summary)))
         if hasattr(model, "NUM_BATCHES"):
@@ -95,9 +95,6 @@ def run_one_step(func, nwarmup=WARMUP_ROUNDS, num_iter=10, model=None, export_me
     # Warm-up `nwarmup` rounds
     for _i in range(nwarmup):
         func()
-    if args.device == "ipex_cpu":
-        args.device = "cpu"
-    #print("run_one_step, args.device is %s" % args.device)
 
     result_summary = []
     metrics_backend_mapping = {}
@@ -125,7 +122,7 @@ def run_one_step(func, nwarmup=WARMUP_ROUNDS, num_iter=10, model=None, export_me
         if 'cpu_peak_mem' in metrics_needed:
             print("Metric cpu_peak_mem is collected by psutil.Process.")
         model_analyzer.start_monitor()
-    
+
     if stress:
         cur_time = time.time_ns()
         start_time = cur_time
@@ -150,7 +147,7 @@ def run_one_step(func, nwarmup=WARMUP_ROUNDS, num_iter=10, model=None, export_me
             torch.cuda.synchronize()
             t1 = time.time_ns()
             result_summary.append((start_event.elapsed_time(end_event), (t1 - t0) / 1_000_000))
-        if args.device == "xpu":
+        elif args.device == "xpu":
             torch.xpu.synchronize()
             start_event = torch.xpu.Event(enable_timing=True)
             end_event = torch.xpu.Event(enable_timing=True)
@@ -328,7 +325,7 @@ if __name__ == "__main__":
     if not Model:
         print(f"Unable to find model matching {args.model}.")
         exit(-1)
-    
+
     m = Model(device=args.device, test=args.test, jit=(args.mode == "jit"), batch_size=args.bs, extra_args=extra_args)
     print(f"Running {args.test} method from {Model.name} on {args.device} in {args.mode} mode with input batch size {m.batch_size}.")
     if args.channels_last:

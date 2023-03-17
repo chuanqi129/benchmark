@@ -22,7 +22,7 @@ class Model(BenchmarkModel):
     def __init__(self, test, device, jit=False, batch_size=None, extra_args=[]):
         super().__init__(test=test, device=device, jit=jit, batch_size=batch_size, extra_args=extra_args)
 
-        if device in ['cpu', 'ipex_cpu'] or jit:
+        if self.device == 'cpu' or jit:
             # TODO - currently load_model assumes cuda
             raise NotImplementedError("Tacotron2 doesn't support CPU or JIT because load_model assumes CUDA")
 
