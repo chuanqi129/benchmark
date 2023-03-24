@@ -386,5 +386,15 @@ class BenchmarkModel(metaclass=PostInitProcessor):
         dtype = torch.float16
         if self.test == "train" and self.device == "xpu":
             dtype = torch.bfloat16
-        print("amp train precision for %s is %s" % (self.device, dtype))
+        print("amp %s precision for %s is %s" % (self.test, self.device, dtype))
         self.amp_context = lambda: torch.autocast(device_type=self.device, dtype=dtype, enabled=True)
+
+    def enable_optimize(self):
+        # xpu optimized dtype follow xpu amp dtype, bf16 for train, fp16 for inference
+        dtype = torch.float16
+        if self.test == "train" and self.device == "xpu":
+            dtype = torch.bfloat16
+        model, _ = self.get_module()
+        model = torch.xpu.optimize(model=model, dtype=dtype)
+        self.set_module(model)
+
