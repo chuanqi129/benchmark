@@ -37,7 +37,7 @@ class Model(BenchmarkModel):
         device_arg = ""
         if self.device == "cpu":
             device_arg = "--gpu_ids -1"
-        elif self.device == "cuda":
+        elif self.device in  ["cuda","xpu"]:
             device_arg = "--gpu_ids 0"
         if self.test == "train":
             train_args = f"--tb_device {self.device} --dataroot {data_root}/datasets/horse2zebra --name horse2zebra --model cycle_gan --display_id 0 --n_epochs 3 " + \

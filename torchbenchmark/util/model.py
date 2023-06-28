@@ -81,6 +81,15 @@ class BenchmarkModel(metaclass=PostInitProcessor):
         assert self.test == "train" or self.test == "eval", \
             f"Test must be 'train' or 'eval', but get {self.test}. Please submit a bug report."
         self.device = device
+
+        if self.device == "xpu":
+            import intel_extension_for_pytorch
+            print("import IPEX, device is %s"% self.device)
+        elif self.device == "ipex_cpu":
+            import intel_extension_for_pytorch
+            self.device = "cpu"
+            print("import IPEX, device is %s"% self.device)
+
         self.jit = jit
         self.extra_args = extra_args
         self.opt = None
@@ -405,3 +414,19 @@ class BenchmarkModel(metaclass=PostInitProcessor):
             self.amp_context = lambda: torch.cpu.amp.autocast()
         elif self.device == "cuda":
             self.amp_context = lambda: torch.cuda.amp.autocast()
+        elif self.device == "xpu":
+            # for IPEX amp, bf16 for train, fp16 for inference
+            dtype = torch.bfloat16 if self.test == "train" else torch.float16
+            print("amp %s precision for %s is %s" % (self.test, self.device, dtype))
+            self.amp_context = lambda: torch.autocast(device_type=self.device, dtype=dtype, enabled=True)
+
+    def enable_optimize(self):
+        if self.device == "xpu":
+            # xpu optimized dtype follow xpu amp dtype, bf16 for train, fp16 for inference
+            dtype = torch.bfloat16 if self.test == "train" else torch.float16
+            model, _ = self.get_module()
+            model = torch.xpu.optimize(model=model, dtype=dtype)
+            self.set_module(model)
+        else:
+            return NotImplementedError("optimize now only support for IPEX XPU")
+

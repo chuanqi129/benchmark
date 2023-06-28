@@ -22,7 +22,7 @@ from torchbenchmark import load_canary_model_by_name, load_model_by_name, ModelN
 from torchbenchmark.util.experiment.metrics import get_peak_memory
 
 WARMUP_ROUNDS = 3
-SUPPORT_DEVICE_LIST = ["cpu", "cuda"]
+SUPPORT_DEVICE_LIST = ["cpu", "cuda", "xpu", "ipex_cpu"]
 if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
     SUPPORT_DEVICE_LIST.append("mps")
 SUPPORT_PROFILE_LIST = [
@@ -69,7 +69,7 @@ def run_one_step_with_cudastreams(func, streamcount):
 
 
 def printResultSummaryTime(result_summary, metrics_needed=[], model=None, flops_model_analyzer=None, cpu_peak_mem=None, mem_device_id=None, gpu_peak_mem=None):
-    if args.device == "cuda":
+    if args.device in ["cuda", "xpu"]:
         gpu_time = np.median(list(map(lambda x: x[0], result_summary)))
         cpu_walltime = np.median(list(map(lambda x: x[1], result_summary)))
         if hasattr(model, "NUM_BATCHES"):
@@ -133,6 +133,10 @@ def run_one_step(func, nwarmup=WARMUP_ROUNDS, num_iter=10, model=None, export_me
             torch.cuda.synchronize()
             t1 = time.time_ns()
             result_summary.append((start_event.elapsed_time(end_event), (t1 - t0) / 1_000_000))
+        elif args.device == "xpu":
+            torch.xpu.synchronize()
+            start_event = torch.xpu.Event(enable_timing=True)
+            end_event = torch.xpu.Event(enable_timing=True)
         elif args.device == "mps":
             t0 = time.time_ns()
             func()

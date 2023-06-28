@@ -50,13 +50,17 @@ class Model(BenchmarkModel):
         self.args.amp = True
 
     def train(self):
-        grad_scaler = torch.cuda.amp.GradScaler(enabled=self.args.amp)
+        with self.amp_context():
+            if self.device == "cuda":
+                grad_scaler = torch.cuda.amp.GradScaler(enabled=self.args.amp)
+            elif self.device == "xpu":
+                print("xpu amp train only support for bfloat16, which no need grad_scaler")
         criterion = nn.CrossEntropyLoss()
 
         self.model.train()
 
         if True:
-            with torch.cuda.amp.autocast(enabled=self.args.amp):
+            with self.amp_context():
                 masks_pred = self.model(self.example_inputs)
                 masks_true = self.sample_masks
                 loss = criterion(masks_pred, masks_true) + \
@@ -66,9 +70,12 @@ class Model(BenchmarkModel):
                         multiclass=True)
 
             self.optimizer.zero_grad(set_to_none=True)
-            grad_scaler.scale(loss).backward()
-            grad_scaler.step(self.optimizer)
-            grad_scaler.update()
+            if self.device == "cuda":
+                grad_scaler.scale(loss).backward()
+                grad_scaler.step(self.optimizer)
+                grad_scaler.update()
+            elif self.device == "xpu":
+                self.optimizer.step()
 
     def jit_callback(self):
         assert self.jit, "Calling JIT callback without specifying the JIT option."
@@ -81,7 +88,7 @@ class Model(BenchmarkModel):
     def eval(self) -> Tuple[torch.Tensor]:
         self.model.eval()
         with torch.no_grad():
-            with torch.cuda.amp.autocast(enabled=self.args.amp):
+            with self.amp_context():
                 mask_pred = self.model(self.example_inputs)
 
                 if self.model.n_classes == 1:

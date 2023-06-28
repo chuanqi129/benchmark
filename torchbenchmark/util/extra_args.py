@@ -43,6 +43,15 @@ def check_memory_layout(model: 'torchbenchmark.util.model.BenchmakModel', channe
         return hasattr(model, 'enable_channels_last')
     return True
 
+def check_optimize(model: 'torchbenchmark.util.model.BenchmakModel', optimize: bool, precision: str) -> bool:
+    if optimize:
+        if model.device == "xpu":
+            return hasattr(model, 'enable_optimize') if precision == "amp" else False
+        else:
+            return False
+    else:
+        return True
+
 def check_distributed_trainer(model: 'torchbenchmark.util.model.BenchmakModel', distributed_trainer: Optional[str]) -> bool:
     if not model.test == "train" and distributed_trainer:
         return False
@@ -74,6 +83,7 @@ def parse_decoration_args(model: 'torchbenchmark.util.model.BenchmarkModel', ext
     parser.add_argument("--accuracy", action="store_true", help="Check accuracy of the model only instead of running the performance test.")
     parser.add_argument("--use_cosine_similarity", action='store_true', help="use cosine similarity for correctness check")
     parser.add_argument("--quant-engine", choices=QUANT_ENGINES, default='x86', help=f"choose quantization engine for fx_int8 precision from {QUANT_ENGINES}")
+    parser.add_argument("--optimize", action='store_true', help="enable xpu optimize")
     dargs, opt_args = parser.parse_known_args(extra_args)
     if not check_precision(model, dargs.precision):
         raise NotImplementedError(f"precision value: {dargs.precision}, "
@@ -86,11 +96,16 @@ def parse_decoration_args(model: 'torchbenchmark.util.model.BenchmarkModel', ext
     if not check_distributed_trainer(model, dargs.distributed):
         raise NotImplementedError(f"We only support distributed trainer {dargs.distributed} for train tests, "
                                   f"but get test: {model.test}")
+    if not check_optimize(model, dargs.optimize, dargs.precision):
+        raise NotImplementedError(f"We only support optimize for xpu + amp, "
+                                  f"but get device: {model.device}, get precision : {dargs.precision}")
     return (dargs, opt_args)
 
 def apply_decoration_args(model: 'torchbenchmark.util.model.BenchmarkModel', dargs: argparse.Namespace):
     if dargs.channels_last:
         model.enable_channels_last()
+    if dargs.optimize:
+        model.enable_optimize()
     if dargs.precision == "fp16":
         model.enable_fp16_half()
     elif dargs.precision == "tf32":
