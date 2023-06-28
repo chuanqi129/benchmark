@@ -137,6 +137,14 @@ def run_one_step(func, nwarmup=WARMUP_ROUNDS, num_iter=10, model=None, export_me
             torch.xpu.synchronize()
             start_event = torch.xpu.Event(enable_timing=True)
             end_event = torch.xpu.Event(enable_timing=True)
+
+            t0 = time.time_ns()
+            start_event.record()
+            func()
+            end_event.record()
+            torch.xpu.synchronize()
+            t1 = time.time_ns()
+            result_summary.append((start_event.elapsed_time(end_event), (t1 - t0) / 1_000_000))
         elif args.device == "mps":
             t0 = time.time_ns()
             func()

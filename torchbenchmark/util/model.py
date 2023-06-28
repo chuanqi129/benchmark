@@ -168,6 +168,8 @@ class BenchmarkModel(metaclass=PostInitProcessor):
                 current_device_name = "cpu"
             elif self.device == "mps":
                 current_device_name = "mps"
+            elif self.device == "xpu":
+                current_device_name = "xpu"
             # use the device suggestion on CUDA inference tests, key should be either eval_batch_size or train_batch_size
             device_batch_size_key = f"{self.test}_batch_size"
             if self.metadata and "devices" in self.metadata and current_device_name in self.metadata["devices"] \
