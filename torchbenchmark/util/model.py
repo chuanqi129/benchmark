@@ -426,9 +426,15 @@ class BenchmarkModel(metaclass=PostInitProcessor):
         if self.device == "xpu":
             # xpu optimized dtype follow xpu amp dtype, bf16 for train, fp16 for inference
             dtype = torch.bfloat16 if self.test == "train" else torch.float16
+            print("optimize %s precision for %s is %s" % (self.test, self.device, dtype))
             model, _ = self.get_module()
-            model = torch.xpu.optimize(model=model, dtype=dtype)
+            if self.test == "eval":
+                model = torch.xpu.optimize(model=model, dtype=dtype)
+            else:
+                optimizer = self.get_optimizer()
+                model, optimizer = torch.xpu.optimize(model=model, optimizer=optimizer, dtype=dtype)
+                self.set_optimizer(optimizer) 
             self.set_module(model)
         else:
-            return NotImplementedError("optimize now only support for IPEX XPU")
+            return NotImplementedError("--optimize now only support for IPEX XPU")
 
