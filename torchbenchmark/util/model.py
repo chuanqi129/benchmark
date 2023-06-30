@@ -410,8 +410,6 @@ class BenchmarkModel(metaclass=PostInitProcessor):
     def enable_amp(self):
         if not self.dynamo and self.opt_args.backend == 'cudagraph':
             return NotImplementedError("AMP not implemented for cudagraphs")
-        if not hasattr(self, "amp_context"):
-            raise RuntimeError(f"{self.name} doesn't have amp_context support!")
         if self.device == "cpu":
             self.amp_context = lambda: torch.cpu.amp.autocast()
         elif self.device == "cuda":
@@ -421,6 +419,8 @@ class BenchmarkModel(metaclass=PostInitProcessor):
             dtype = torch.bfloat16 if self.test == "train" else torch.float16
             print("amp %s precision for %s is %s" % (self.test, self.device, dtype))
             self.amp_context = lambda: torch.autocast(device_type=self.device, dtype=dtype, enabled=True)
+        if not hasattr(self, "amp_context"):
+            raise RuntimeError(f"{self.name} doesn't have amp_context support!")
 
     def enable_optimize(self):
         if self.device == "xpu":
