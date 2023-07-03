@@ -46,13 +46,10 @@ class Model(BenchmarkModel):
     def get_module(self):
         return self.model, (self.example_inputs,)
 
-    def enable_amp(self):
-        self.args.amp = True
-
     def train(self):
-        with self.amp_context():
+        if hasattr(self, "amp_context"):
             if self.device == "cuda":
-                grad_scaler = torch.cuda.amp.GradScaler(enabled=self.args.amp)
+                grad_scaler = torch.cuda.amp.GradScaler(enabled=True)
             elif self.device == "xpu":
                 print("xpu amp train only support for bfloat16, which no need grad_scaler")
         criterion = nn.CrossEntropyLoss()
@@ -60,14 +57,13 @@ class Model(BenchmarkModel):
         self.model.train()
 
         if True:
-            with self.amp_context():
-                masks_pred = self.model(self.example_inputs)
-                masks_true = self.sample_masks
-                loss = criterion(masks_pred, masks_true) + \
-                    dice_loss(
-                        F.softmax(masks_pred, dim=1).float(),
-                        F.one_hot(masks_true, self.model.n_classes).permute(0, 3, 1, 2).float(),
-                        multiclass=True)
+            masks_pred = self.model(self.example_inputs)
+            masks_true = self.sample_masks
+            loss = criterion(masks_pred, masks_true) + \
+                dice_loss(
+                    F.softmax(masks_pred, dim=1).float(),
+                    F.one_hot(masks_true, self.model.n_classes).permute(0, 3, 1, 2).float(),
+                    multiclass=True)
 
             self.optimizer.zero_grad(set_to_none=True)
             if self.device == "cuda":
@@ -88,13 +84,12 @@ class Model(BenchmarkModel):
     def eval(self) -> Tuple[torch.Tensor]:
         self.model.eval()
         with torch.no_grad():
-            with self.amp_context():
-                mask_pred = self.model(self.example_inputs)
+            mask_pred = self.model(self.example_inputs)
 
-                if self.model.n_classes == 1:
-                    mask_pred = (F.sigmoid(mask_pred) > 0.5).float()
-                else:
-                    mask_pred = F.one_hot(mask_pred.argmax(dim=1), self.model.n_classes).permute(0, 3, 1, 2).float()
+            if self.model.n_classes == 1:
+                mask_pred = (F.sigmoid(mask_pred) > 0.5).float()
+            else:
+                mask_pred = F.one_hot(mask_pred.argmax(dim=1), self.model.n_classes).permute(0, 3, 1, 2).float()
         return (mask_pred, )
 
     def _get_args(self):
