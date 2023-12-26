@@ -388,8 +388,9 @@ class BenchmarkModel(metaclass=PostInitProcessor):
             dtype = torch.bfloat16 if self.test == "train" else torch.float16
             print("amp %s precision for %s is %s" % (self.test, self.device, dtype))
             self.amp_context = lambda: torch.autocast(device_type=self.device, dtype=dtype, enabled=True)
-        if is_staged_train_test(self):
-            self.forward_contexts.append(self.amp_context)
+        if self.test == "train": 
+            if is_staged_train_test(self):
+                self.forward_contexts.append(self.amp_context)
         if not hasattr(self, "amp_context"):
             raise RuntimeError(f"{self.name} doesn't have amp_context support!")
 
