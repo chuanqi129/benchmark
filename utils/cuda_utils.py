@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 # defines the default CUDA version to compile against
-DEFAULT_CUDA_VERSION = "11.8"
+DEFAULT_CUDA_VERSION = "12.1"
 
 CUDA_VERSION_MAP = {
     "11.8": {
@@ -88,34 +88,6 @@ def install_pytorch_nightly(cuda_version: str, env, dryrun=False):
     else:
         subprocess.check_call(install_torch_cmd, env=env)
 
-    # Install Torch-TensorRT with validation
-    uninstall_torchtrt_cmd = ["pip", "uninstall", "-y", "torch_tensorrt"]
-    if dryrun:
-        print(f"Uninstall torch-tensorrt: {uninstall_torchtrt_cmd}")
-    else:
-        subprocess.check_call(uninstall_torchtrt_cmd)
-
-    install_torchtrt_cmd = [
-        "pip",
-        "install",
-        "--pre",
-        "--no-cache-dir",
-        "torch_tensorrt",
-        "--extra-index-url",
-        pytorch_nightly_url,
-    ]
-    validate_torchtrt_cmd = ["python", "-c", "'import torch_tensorrt'"]
-    if dryrun:
-        print(f"Install torch-tensorrt nightly: {install_torchtrt_cmd}")
-        print(f"Validate torch-tensorrt nightly install: {validate_torchtrt_cmd}")
-    else:
-        try:
-            subprocess.check_call(install_torchtrt_cmd, env=env)
-            subprocess.check_call(validate_torchtrt_cmd, env=env)
-        except subprocess.CalledProcessError:
-            subprocess.check_call(uninstall_torchtrt_cmd, env=env)
-            print(f"Failed to install torch-tensorrt, skipping install")
-
 def install_torch_deps(cuda_version: str):
     # install magma
     magma_pkg = CUDA_VERSION_MAP[cuda_version]["magma_version"]
@@ -141,12 +113,14 @@ def install_torch_build_deps(cuda_version: str):
     pip_deps = [ f"numpy=={PIN_NUMPY_VERSION}" ]
     cmd = ["pip", "install"] + pip_deps
     subprocess.check_call(cmd)
+    # conda forge deps
+    # ubuntu 22.04 comes with libstdcxx6 12.3.0
+    # we need to install the same library version in conda
+    conda_deps = ["libstdcxx-ng=12.3.0"]
+    cmd = ["conda", "install", "-y", "-c", "conda-forge"] + conda_deps
+    subprocess.check_call(cmd)
 
 def install_torchbench_deps():
-    # weasyprint requires ffi7, which requires glib > 2.69 on ubuntu 20.04
-    conda_deps = ["glib"]
-    cmd = ["conda", "install", "-y"] + conda_deps
-    subprocess.check_call(cmd)
     cmd = ["pip", "install", "unittest-xml-reporting", "boto3"]
     subprocess.check_call(cmd)
 
