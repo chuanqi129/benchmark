@@ -200,7 +200,7 @@ class Model(BenchmarkModel):
 
     def get_module(self):
         model = self.agent.actor
-        state, _info = self.train_env.reset()
+        state = self.train_env.reset()
         action = self.agent.sample_action(state)
         next_state, reward, done, info, _unused = self.train_env.step(action)
         self.buffer.push(state, action, reward, next_state, done)
@@ -219,11 +219,11 @@ class Model(BenchmarkModel):
         niter = 1
         for step in range(niter):
             if done:
-                state, _info = self.train_env.reset()
+                state = self.train_env.reset()
                 steps_this_ep = 0
                 done = False
             action = self.agent.sample_action(state)
-            next_state, reward, done, info, _unused = self.train_env.step(action)
+            next_state, reward, done, info = self.train_env.step(action)
             self.buffer.push(state, action, reward, next_state, done)
             state = next_state
             steps_this_ep += 1
@@ -262,13 +262,13 @@ class Model(BenchmarkModel):
         episode_return_history = []
         for episode in range(niter):
             episode_return = 0.0
-            state, _info = self.test_env.reset()
+            state = self.test_env.reset()
             done, info = False, {}
             for step_num in range(self.args.max_episode_steps):
                 if done:
                     break
                 action = self.agent.forward(state)
-                state, reward, done, info, _unused = self.test_env.step(action)
+                state, reward, done, info = self.test_env.step(action)
                 episode_return += reward * (discount**step_num)
             episode_return_history.append(episode_return)
         retval = torch.tensor(episode_return_history)

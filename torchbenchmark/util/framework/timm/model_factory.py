@@ -45,7 +45,7 @@ class TimmModel(BenchmarkModel):
             pretrained=pretrained_weights,
         )
 
-        self.cfg = TimmConfig(model=self.model, device=device)
+        self.cfg = TimmConfig(model=self.model, device=self.device)
         self.example_inputs = self._gen_input(self.batch_size)
 
         self.model.to(device=self.device)

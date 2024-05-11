@@ -60,6 +60,14 @@ def check_precision(
     ), f"Expected precision to be one of {AVAILABLE_PRECISIONS}, but get {precision}"
     return True
 
+def check_optimize(model: 'torchbenchmark.util.model.BenchmakModel', optimize: bool, precision: str) -> bool:
+    if optimize:
+        if model.device == "xpu":
+            return hasattr(model, 'enable_optimize') if precision == "amp" else False
+        else:
+            return False
+    else:
+        return True
 
 def check_memory_layout(
     model: "torchbenchmark.util.model.BenchmakModel", channels_last: bool
@@ -143,6 +151,8 @@ def parse_decoration_args(
         type=int,
         help="Number of batches if running the multi-batch train test.",
     )
+    parser.add_argument("--optimize", action='store_true', help="enable xpu optimize")
+
     dargs, opt_args = parser.parse_known_args(extra_args)
     if not check_precision(model, dargs.precision):
         raise NotImplementedError(
@@ -160,6 +170,9 @@ def parse_decoration_args(
             f"We only support distributed trainer {dargs.distributed} for train tests, "
             f"but get test: {model.test}"
         )
+    if not check_optimize(model, dargs.optimize, dargs.precision):
+        raise NotImplementedError(f"We only support optimize for xpu + amp, "
+                                  f"but get device: {model.device}, get precision : {dargs.precision}")
     return (dargs, opt_args)
 
 
@@ -168,6 +181,8 @@ def apply_decoration_args(
 ):
     if dargs.channels_last:
         model.enable_channels_last()
+    if dargs.optimize:
+        model.enable_optimize()
     if dargs.precision == "fp16":
         model.enable_fp16()
     elif dargs.precision == "bf16":

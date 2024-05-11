@@ -51,31 +51,32 @@ class Model(BenchmarkModel):
     def get_module(self):
         return self.model, (self.example_inputs,)
 
-    def enable_amp(self):
-        self.args.amp = True
-
     def train(self):
-        grad_scaler = torch.cuda.amp.GradScaler(enabled=self.args.amp)
+        if hasattr(self, "amp_context"):
+            if self.device == "cuda":
+                grad_scaler = torch.cuda.amp.GradScaler(enabled=True)
+            elif self.device == "xpu":
+                print("xpu amp train only support for bfloat16, which no need grad_scaler")
         criterion = nn.CrossEntropyLoss()
 
         self.model.train()
 
         if True:
-            with torch.cuda.amp.autocast(enabled=self.args.amp):
-                masks_pred = self.model(self.example_inputs)
-                masks_true = self.sample_masks
-                loss = criterion(masks_pred, masks_true) + dice_loss(
+            masks_pred = self.model(self.example_inputs)
+            masks_true = self.sample_masks
+            loss = criterion(masks_pred, masks_true) + \
+                dice_loss(
                     F.softmax(masks_pred, dim=1).float(),
-                    F.one_hot(masks_true, self.model.n_classes)
-                    .permute(0, 3, 1, 2)
-                    .float(),
-                    multiclass=True,
-                )
+                    F.one_hot(masks_true, self.model.n_classes).permute(0, 3, 1, 2).float(),
+                    multiclass=True)
 
             self.optimizer.zero_grad(set_to_none=True)
-            grad_scaler.scale(loss).backward()
-            grad_scaler.step(self.optimizer)
-            grad_scaler.update()
+            if self.device == "cuda":
+                grad_scaler.scale(loss).backward()
+                grad_scaler.step(self.optimizer)
+                grad_scaler.update()
+            elif self.device == "xpu":
+                self.optimizer.step()
 
     def jit_callback(self):
         if self.test == "eval":
@@ -90,13 +91,12 @@ class Model(BenchmarkModel):
     def eval(self) -> Tuple[torch.Tensor]:
         torch.backends.cudnn.deterministic = True
         self.model.eval()
-        with torch.cuda.amp.autocast(enabled=self.args.amp):
-            mask_pred = self.model(self.example_inputs)
+        mask_pred = self.model(self.example_inputs)
 
-            if self.model.n_classes == 1:
-                mask_pred = (F.sigmoid(mask_pred) > 0.5).float()
-            else:
-                mask_pred = (
+        if self.model.n_classes == 1:
+            mask_pred = (F.sigmoid(mask_pred) > 0.5).float()
+        else:
+            mask_pred = (
                     F.one_hot(mask_pred.argmax(dim=1), self.model.n_classes)
                     .permute(0, 3, 1, 2)
                     .float()

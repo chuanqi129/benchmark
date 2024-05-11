@@ -49,7 +49,7 @@ class Model(BenchmarkModel):
         self.args = self.parser.parse_args([])
         args = self.args
         model = Demucs(channels=64)
-        model.to(device)
+        model.to(self.device)
         samples = 80000
 
         self.duration = Fraction(samples + args.data_stride, args.samplerate)
@@ -66,7 +66,7 @@ class Model(BenchmarkModel):
                 FlipChannels(),
                 Shift(args.data_stride),
                 Remix(group_size=args.remix_group_size),
-            ).to(device)
+            ).to(self.device)
         else:
             self.augment = Shift(args.data_stride)
 
@@ -79,7 +79,7 @@ class Model(BenchmarkModel):
             self.model.eval()
 
         self.example_inputs = (
-            torch.rand([self.batch_size, 5, 2, 426888], device=device),
+            torch.rand([self.batch_size, 5, 2, 426888], device=self.device),
         )
 
     def get_module(self) -> Tuple[DemucsWrapper, Tuple[Tensor]]:

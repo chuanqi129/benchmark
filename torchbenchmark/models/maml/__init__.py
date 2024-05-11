@@ -60,7 +60,7 @@ class Model(BenchmarkModel):
             ("linear", [args.n_way, 64]),
         ]
 
-        self.module = Meta(args, config).to(device)
+        self.module = Meta(args, config).to(self.device)
 
         if use_data_file:
             self.example_inputs = torch.load(f"{root}/batch.pt")
@@ -72,23 +72,23 @@ class Model(BenchmarkModel):
             self.example_inputs = (
                 torch.randn(
                     args.task_num, args.n_way, args.imgc, args.imgsz, args.imgsz
-                ).to(device),
+                ).to(self.device),
                 torch.randint(
                     0, args.n_way, [args.task_num, args.n_way], dtype=torch.long
-                ).to(device),
+                ).to(self.device),
                 torch.randn(
                     args.task_num,
                     args.n_way * args.k_qry,
                     args.imgc,
                     args.imgsz,
                     args.imgsz,
-                ).to(device),
+                ).to(self.device),
                 torch.randint(
                     0,
                     args.n_way,
                     [args.task_num, args.n_way * args.k_qry],
                     dtype=torch.long,
-                ).to(device),
+                ).to(self.device),
             )
 
         # print input shapes

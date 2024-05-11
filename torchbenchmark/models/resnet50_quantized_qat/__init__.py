@@ -17,9 +17,9 @@ class Model(BenchmarkModel):
     DEFAULT_EVAL_BSIZE = 32
 
     def __init__(self, test, device, batch_size=None, extra_args=[]):
+        super().__init__(test=test, device=device, batch_size=batch_size, extra_args=extra_args)
         if test == "eval" and device != "cpu":
             raise NotImplementedError("The eval test only supports CPU.")
-        super().__init__(test=test, device=device, batch_size=batch_size, extra_args=extra_args)
 
         self.model = models.resnet50().to(self.device)
         self.example_inputs = (torch.randn((self.batch_size, 3, 224, 224)).to(self.device),)

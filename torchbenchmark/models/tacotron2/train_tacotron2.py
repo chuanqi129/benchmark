@@ -24,11 +24,14 @@ def reduce_tensor(tensor, n_gpus):
 
 
 def init_distributed(hparams, n_gpus, rank, group_name):
-    assert torch.cuda.is_available(), "Distributed mode requires CUDA."
+    assert torch.cuda.is_available() or torch.xpu.is_available(), "Distributed mode requires CUDA or XPU."
     print("Initializing Distributed")
 
     # Set cuda device so everything is done on the right GPU.
-    torch.cuda.set_device(rank % torch.cuda.device_count())
+    if torch.cuda.is_available():
+        torch.cuda.set_device(rank % torch.cuda.device_count())
+    elif torch.xpu.is_available():
+        torch.xpu.set_device(rank % torch.xpu.device_count())
 
     # Initialize distributed communication
     dist.init_process_group(

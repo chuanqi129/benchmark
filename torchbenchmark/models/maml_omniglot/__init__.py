@@ -71,7 +71,7 @@ class Model(BenchmarkModel):
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2, 2),
             nn.Flatten(),
-            nn.Linear(64, n_way)).to(device)
+            nn.Linear(64, n_way)).to(self.device)
         self.model = net
 
         root = str(Path(__file__).parent)
@@ -114,5 +114,6 @@ class Model(BenchmarkModel):
     def eval(self) -> Tuple[torch.Tensor]:
         model, (example_input,) = self.get_module()
         model.eval()
-        out = model(example_input)
+        with torch.no_grad():
+            out = model(example_input)
         return (out, )

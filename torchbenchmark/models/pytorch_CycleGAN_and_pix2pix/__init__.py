@@ -38,7 +38,7 @@ class Model(BenchmarkModel):
         device_type_arg = f"--device_type {self.device}"
         if self.device == "cpu":
             device_arg = "--gpu_ids -1"
-        else:
+        elif self.device in  ["cuda","xpu"]:
             device_arg = "--gpu_ids 0"
 
         if self.test == "train":

@@ -39,7 +39,7 @@ class Model(BenchmarkModel):
             test=test, device=device, batch_size=batch_size, extra_args=extra_args
         )
 
-        self.model = ModelWrapper(device)
+        self.model = ModelWrapper(self.device)
         root = os.path.join(DATA_PATH, "Super_SloMo_inputs")
         self.args = args = Namespace(
             **{
