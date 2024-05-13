@@ -87,6 +87,14 @@ class BenchmarkModel(metaclass=PostInitProcessor):
         assert self.test == "train" or self.test == "eval", \
                f"Test must be 'train' or 'eval', but provided {self.test}."
         self.device = device
+        if self.device == "xpu":
+            import intel_extension_for_pytorch
+            print("import IPEX, device is %s"% self.device)
+        elif self.device == "ipex_cpu":
+            import intel_extension_for_pytorch
+            self.device = "cpu"
+            print("import IPEX, device is %s"% self.device)
+
         self.extra_args = extra_args
         self.opt = None
         self._skip_by_device_name()
@@ -370,14 +378,37 @@ class BenchmarkModel(metaclass=PostInitProcessor):
     def enable_amp(self):
         if not self.dynamo and self.opt_args.backend == 'cudagraph':
             return NotImplementedError("AMP not implemented for cudagraphs")
-        if not hasattr(self, "amp_context"):
-            raise RuntimeError(f"{self.name} doesn't have amp_context support!")
         if self.device == "cpu":
             self.amp_context = lambda: torch.cpu.amp.autocast()
         elif self.device == "cuda":
             self.amp_context = lambda: torch.cuda.amp.autocast()
+        elif self.device == "xpu":
+            # for IPEX amp, bf16 for train, fp16 for inference
+            dtype = torch.bfloat16 if self.test == "train" else torch.float16
+            print("amp %s precision for %s is %s" % (self.test, self.device, dtype))
+            self.amp_context = lambda: torch.autocast(device_type=self.device, dtype=dtype, enabled=True)
+
         if is_staged_train_test(self):
             self.forward_contexts.append(self.amp_context)
+        
+        if not hasattr(self, "amp_context"):
+            raise RuntimeError(f"{self.name} doesn't have amp_context support!")
+    
+    def enable_optimize(self):
+        if self.device == "xpu":
+            # xpu optimized dtype follow xpu amp dtype, bf16 for train, fp16 for inference
+            dtype = torch.bfloat16 if self.test == "train" else torch.float16
+            print("optimize %s precision for %s is %s" % (self.test, self.device, dtype))
+            model, _ = self.get_module()
+            if self.test == "eval":
+                model = torch.xpu.optimize(model=model, dtype=dtype)
+            else:
+                optimizer = self.get_optimizer()
+                model, optimizer = torch.xpu.optimize(model=model, optimizer=optimizer, dtype=dtype)
+                self.set_optimizer(optimizer)
+            self.set_module(model)
+        else:
+            return NotImplementedError("--optimize now only support for IPEX XPU")
 
     @property
     def pt2_compilation_time(self) -> Optional[float]:

@@ -33,7 +33,7 @@ else:
 
 
 WARMUP_ROUNDS = 3
-SUPPORT_DEVICE_LIST = ["cpu", "cuda"]
+SUPPORT_DEVICE_LIST = ["cpu", "cuda", "xpu", "ipex_cpu"]
 if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
     SUPPORT_DEVICE_LIST.append("mps")
 SUPPORT_PROFILE_LIST = [
@@ -95,7 +95,7 @@ def printResultSummaryTime(
     gpu_peak_mem=None,
 ):
     assert model is not None, "model can not be None."
-    if args.device == "cuda":
+    if args.device in ["cuda", "xpu"]:
         gpu_time = np.median(list(map(lambda x: x[0], result_summary)))
         cpu_walltime = np.median(list(map(lambda x: x[1], result_summary)))
         print(
@@ -208,6 +208,17 @@ def run_one_step(
             result_summary.append(
                 (start_event.elapsed_time(end_event), (t1 - t0) / 1_000_000)
             )
+        elif args.device == "xpu":
+            torch.xpu.synchronize()
+            start_event = torch.xpu.Event(enable_timing=True)
+            end_event = torch.xpu.Event(enable_timing=True)
+            t0 = time.time_ns()
+            start_event.record()
+            func()
+            end_event.record()
+            torch.xpu.synchronize()
+            t1 = time.time_ns()
+            result_summary.append((start_event.elapsed_time(end_event), (t1 - t0) / 1_000_000))
         elif args.device == "mps":
             t0 = time.time_ns()
             func()

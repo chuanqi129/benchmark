@@ -6,11 +6,9 @@ MODEL_NAME = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 MODEL_DIR = os.path.abspath(os.path.dirname(__file__))
 
 class Model(Detectron2Model):
-    task = COMPUTER_VISION.SEGMENTATION
-    model_file = None
-    # A hack to workaround fcos model instantiate error
-    FCOS_USE_BN = True
+    task = COMPUTER_VISION.DETECTION
+    model_file = os.path.join(MODEL_DIR, ".data", f"{MODEL_NAME}.pkl")
 
     def __init__(self, test, device, batch_size=None, extra_args=[]):
-        super().__init__(variant="COCO-Detection/fcos_R_50_FPN_1x.py", test=test, device=device,
+        super().__init__(variant="COCO-Detection/faster_rcnn_R_50_FPN_1x.yaml", test=test, device=device,
                          batch_size=batch_size, extra_args=extra_args)

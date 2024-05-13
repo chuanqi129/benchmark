@@ -49,7 +49,7 @@ class Model(BenchmarkModel):
         self.args = self.parser.parse_args([])
         args = self.args
         model = Demucs(channels=64)
-        model.to(device)
+        model.to(self.device)
         samples = 80000
 
         self.duration = Fraction(samples + args.data_stride, args.samplerate)

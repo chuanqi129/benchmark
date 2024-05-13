@@ -50,7 +50,7 @@ class Model(BenchmarkModel):
         config.num_workers = 0
         config.batch_size = self.batch_size
         config.use_tensorboard = False
-        config.device = device
+        config.device = self.device
         config.should_script = False
         config.prefetch = True
 
