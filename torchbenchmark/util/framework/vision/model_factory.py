@@ -27,7 +27,6 @@ class TorchVisionModel(BenchmarkModel):
         else:
             self.model = getattr(models, model_name)(weights=weights).to(self.device)
         self.example_inputs = (torch.randn((self.batch_size, 3, 224, 224), requires_grad=True).to(self.device), )
-        )
         if test == "train":
             # compute loss
             with torch.no_grad():
